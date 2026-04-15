@@ -19,27 +19,97 @@ fbq('track', 'PageView');
 
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Abrir Shopee</title>
 
 <style>
 body {
   margin: 0;
   height: 100vh;
-  background-color: #E74B2E;
+  background: #E74B2E;
   display: flex;
   justify-content: center;
   align-items: center;
   font-family: Arial;
 }
 
-.botao {
-  background: white;
-  color: #E74B2E;
-  padding: 20px 60px;
-  font-size: 26px;
+.container {
+  width: 100%;
+  max-width: 500px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 25px;
+}
+
+.audio-box {
+  width: 90%;
+  background: #f1f1f1;
+  border-radius: 20px;
+  padding: 15px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.play-btn {
+  width: 45px;
+  height: 45px;
+  background: #E74B2E;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  cursor: pointer;
+  font-size: 18px;
+}
+
+.audio-info {
+  flex: 1;
+}
+
+.bar {
+  width: 100%;
+  height: 6px;
+  background: #ccc;
   border-radius: 10px;
-  text-decoration: none;
-  font-weight: bold;
+  overflow: hidden;
+}
+
+.progress {
+  height: 100%;
+  width: 0%;
+  background: #999;
+}
+
+.time {
+  font-size: 14px;
+  margin-top: 5px;
+}
+
+.botao-cupom {
+  width: 90%;
+  height: 90px;
+  background: black;
+  color: white;
+  font-size: 22px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  cursor: pointer;
+}
+
+.botao-shopee {
+  width: 70%;
+  height: 80px;
+  background: #f1f1f1;
+  color: #E74B2E;
+  font-size: 26px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
 }
 </style>
@@ -48,73 +118,194 @@ body {
 
 <body>
 
-<a href="#" id="btnShopee" class="botao">
-Abrir a Shopee
-</a>
+<div class="container">
+
+  <div class="audio-box">
+    <div class="play-btn" id="playBtn">▶</div>
+    <div class="audio-info">
+      <div class="bar">
+        <div class="progress" id="progress"></div>
+      </div>
+      <div class="time" id="time">0:00</div>
+    </div>
+  </div>
+
+  <div class="botao-cupom" id="btnCupom">
+    Clique aqui e copie o cupom de 20% OFF
+  </div>
+
+  <div class="botao-shopee" id="btnShopee">
+    Abrir a Shopee
+  </div>
+
+</div>
+
+<audio id="audio" src="audio.mp3"></audio>
 
 <script>
 (function(){
 
-const LINK_SHOPEE = "https://s.shopee.com.br/4qBaEnyoyr";
-const API_URL = "https://shopee-utm-tracker.onrender.com";
-const UC = "N33lado";
+const LINK = "https://s.shopee.com.br/4qBaEnyoyr";
+const API = "https://shopee-utm-tracker.onrender.com";
+const BASE = "N33T07";
+const CUPOM = "LOJARASANT507AF";
 
-document.getElementById("btnShopee").addEventListener("click", function(e){
-  e.preventDefault();
+/* ESTADOS */
+let percent = "";
+let tempo = 0;
+let tempoLabel = "";
+let player = false;
 
-  const btn = this;
-  btn.innerText = "Redirecionando...";
+/* EVENTO COMBINADO */
+let clickRight = false;
+let tempoS0a1 = false;
+let eventoDisparado = false;
 
-  const rect = btn.getBoundingClientRect();
-  const x = e.clientX - rect.left;
-  const largura = rect.width;
+/* PLAYER */
+const audio = document.getElementById("audio");
+const btn = document.getElementById("playBtn");
+const prog = document.getElementById("progress");
+const time = document.getElementById("time");
 
-  let pos;
+btn.onclick = ()=>{
+  player = true;
+  fbq('trackCustom','PlayerClick');
 
-  // 🔥 LÓGICA ORIGINAL (centro 10%)
-  const inicioCentro = largura * 0.45;
-  const fimCentro = largura * 0.55;
+  if(audio.paused){
+    audio.play();
+    btn.innerText="❚❚";
+  }else{
+    audio.pause();
+    btn.innerText="▶";
+  }
+};
 
-  if (x < inicioCentro) {
-    pos = "Left";
-  } 
-  else if (x > fimCentro) {
-    pos = "Right";
-  } 
-  else {
-    pos = "Center";
+audio.ontimeupdate = ()=>{
+  if(!audio.duration) return;
+
+  let p = audio.currentTime/audio.duration;
+
+  prog.style.width = (p*100)+"%";
+
+  let s = Math.floor(audio.currentTime);
+  time.innerText = "0:"+(s<10?"0"+s:s);
+
+  if(p>=0.99 && percent!=="P100"){
+    percent="P100";
+    fbq('trackCustom','Audio100');
+  }
+  else if(p>=0.75 && percent!=="P75"){
+    percent="P75";
+    fbq('trackCustom','Audio75');
+  }
+  else if(p>=0.5 && percent!=="P50"){
+    percent="P50";
+    fbq('trackCustom','Audio50');
+  }
+  else if(p>=0.25 && percent!=="P25"){
+    percent="P25";
+    fbq('trackCustom','Audio25');
+  }
+};
+
+/* TEMPO IMEDIATO */
+function dispararTempo(){
+
+  tempo += 1;
+
+  if(tempo <= 30){
+    tempoLabel = "S"+(tempo-1)+"a"+tempo;
+  }else{
+    tempoLabel = "S30";
   }
 
-  // ============================
-  // 🔥 EVENTOS META (ADICIONADO)
-  // ============================
+  fbq('trackCustom',"Tempo_"+tempoLabel);
 
-  // Evento com parâmetro
-  fbq('trackCustom', 'ClickShopee', {
-    position: pos
-  });
-
-  // Eventos separados
-  if (pos === "Left") {
-    fbq('trackCustom', 'ClickShopee_Left');
-  } else if (pos === "Center") {
-    fbq('trackCustom', 'ClickShopee_Center');
-  } else {
-    fbq('trackCustom', 'ClickShopee_Right');
+  if(tempoLabel === "S0a1"){
+    tempoS0a1 = true;
+    checkEventoCombinado();
   }
 
-  // ============================
-  // 🔥 FLUXO ORIGINAL (INALTERADO)
-  // ============================
+}
 
-  const link = encodeURIComponent(LINK_SHOPEE);
-  const finalURL = `${API_URL}/?link=${link}&pos=${pos}&uc=${UC}`;
+/* DISPARA IMEDIATO */
+dispararTempo();
 
-  console.log("POS:", pos);
-  console.log("REDIRECT:", finalURL);
+/* LOOP DE 1 EM 1 SEGUNDO */
+setInterval(dispararTempo,1000);
 
-  window.location.href = finalURL;
-});
+/* EVENTO COMBINADO */
+function checkEventoCombinado(){
+
+  if(clickRight && tempoS0a1 && !eventoDisparado){
+    fbq('trackCustom', 'EVENTO01');
+    eventoDisparado = true;
+  }
+
+}
+
+/* UTIL */
+function clean(s){
+  return s.replace(/[^a-zA-Z0-9]/g,"");
+}
+
+function extra(){
+  let e="";
+
+  if(player) e+="PL";
+  if(percent) e+=percent;
+  if(tempoLabel) e+=tempoLabel;
+
+  return e;
+}
+
+/* CLICK */
+function go(e,el,tipo){
+
+  const r = el.getBoundingClientRect();
+  const x = e.clientX - r.left;
+  const w = r.width;
+
+  let pos = x<w*0.3?"Left":x>w*0.7?"Right":"Center";
+
+  let id = BASE;
+
+  if(tipo==="cupom"){
+    id+="CupomClick"+pos;
+    fbq('trackCustom',"CupomClick_"+pos);
+    fbq('track',"InitiateCheckout");
+    navigator.clipboard.writeText(CUPOM);
+    el.innerText="Copiado!";
+  }else{
+    id+="ClickShopee"+pos;
+    fbq('trackCustom',"ClickShopee_"+pos);
+    fbq('track',"ViewContent");
+
+    if(pos === "Right"){
+      clickRight = true;
+      checkEventoCombinado();
+    }
+
+    el.innerText="Redirecionando...";
+  }
+
+  id+=extra();
+  id=clean(id);
+
+  const link = encodeURIComponent(LINK);
+  const url = API+"?link="+link+"&uc="+id;
+
+  setTimeout(()=>{window.location.href=url},150);
+}
+
+/* BOTÕES */
+document.getElementById("btnCupom").onclick = function(e){
+  go(e,this,"cupom");
+};
+
+document.getElementById("btnShopee").onclick = function(e){
+  go(e,this,"normal");
+};
 
 })();
 </script>
