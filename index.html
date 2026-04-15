@@ -21,51 +21,13 @@ fbq('track', 'PageView');
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
-body {
-  margin: 0;
-  height: 100vh;
-  background: #E74B2E;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  font-family: Arial;
-}
-.container {
-  width: 100%;
-  max-width: 500px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 25px;
-}
-.audio-box {
-  width: 90%;
-  background: #f1f1f1;
-  border-radius: 20px;
-  padding: 15px;
-  display: flex;
-  align-items: center;
-  gap: 15px;
-}
-.play-btn {
-  width: 45px;
-  height: 45px;
-  background: #E74B2E;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  cursor: pointer;
-}
-.audio-info { flex:1; }
-.bar { height:6px;background:#ccc;border-radius:10px;overflow:hidden;}
+body {margin:0;height:100vh;background:#E74B2E;display:flex;justify-content:center;align-items:center;font-family:Arial;}
+.container {width:100%;max-width:500px;display:flex;flex-direction:column;align-items:center;gap:25px;}
+.audio-box {width:90%;background:#f1f1f1;border-radius:20px;padding:15px;display:flex;gap:15px;}
+.play-btn {width:45px;height:45px;background:#E74B2E;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;cursor:pointer;}
+.bar {height:6px;background:#ccc;border-radius:10px;overflow:hidden;}
 .progress {height:100%;width:0;background:#999;}
-.time {font-size:14px;margin-top:5px;}
-.botao-cupom,.botao-shopee{
-  display:flex;align-items:center;justify-content:center;
-  cursor:pointer;border-radius:20px;
-}
+.botao-cupom,.botao-shopee{display:flex;align-items:center;justify-content:center;cursor:pointer;border-radius:20px;}
 .botao-cupom{width:90%;height:90px;background:black;color:white;font-size:22px;}
 .botao-shopee{width:70%;height:80px;background:#f1f1f1;color:#E74B2E;font-size:26px;}
 </style>
@@ -75,21 +37,23 @@ body {
 <body>
 
 <div class="container">
+
   <div class="audio-box">
     <div class="play-btn" id="playBtn">▶</div>
-    <div class="audio-info">
+    <div style="flex:1">
       <div class="bar"><div class="progress" id="progress"></div></div>
-      <div class="time" id="time">0:00</div>
+      <div id="time">0:00</div>
     </div>
   </div>
 
   <div class="botao-cupom" id="btnCupom">
-    Clique aqui e copie o cupom de 20% OFF
+    Clique aqui e copie o cupom
   </div>
 
   <div class="botao-shopee" id="btnShopee">
-    Abrir a Shopee
+    Abrir Shopee
   </div>
+
 </div>
 
 <audio id="audio" src="audio.mp3"></audio>
@@ -97,35 +61,54 @@ body {
 <script>
 (function(){
 
-const LINK = "https://s.shopee.com.br/4qBaEnyoyr";
-const API = "https://shopee-utm-tracker.onrender.com";
-const BASE = "N33T07";
-const CUPOM = "LOJARASANT507AF";
+const LINK="https://s.shopee.com.br/4qBaEnyoyr";
+const API="https://shopee-utm-tracker.onrender.com";
+const BASE="N33T07";
+const CUPOM="LOJARASANT507AF";
 
-let percent="",tempo=0,tempoLabel="",player=false;
+/* ESTADO */
+let tempo=0,tempoLabel="";
+let percent="",player=false;
 let disparouS30=false;
 
 /* FLAGS */
 let clickRight=false;
 let tempoS0a1=false;
-let evento01Disparado=false;
-let evento02Disparado=false;
+let tempoS1a2=false;
+let evento01=false;
+let evento02=false;
 
 /* PLAYER */
 const audio=document.getElementById("audio");
 const btn=document.getElementById("playBtn");
 const prog=document.getElementById("progress");
-const time=document.getElementById("time");
 
-btn.onclick=()=>{
+btn.onclick=function(){
   player=true;
   fbq('trackCustom','PlayerClick');
-  audio.paused?(audio.play(),btn.innerText="❚❚"):(audio.pause(),btn.innerText="▶");
+  if(audio.paused){
+    audio.play();
+    btn.innerText="❚❚";
+  }else{
+    audio.pause();
+    btn.innerText="▶";
+  }
+};
+
+audio.ontimeupdate=function(){
+  if(!audio.duration)return;
+  let p=audio.currentTime/audio.duration;
+  prog.style.width=(p*100)+"%";
+
+  if(p>=0.99&&percent!=="P100"){percent="P100";fbq('trackCustom','Audio100');}
+  else if(p>=0.75&&percent!=="P75"){percent="P75";fbq('trackCustom','Audio75');}
+  else if(p>=0.5&&percent!=="P50"){percent="P50";fbq('trackCustom','Audio50');}
+  else if(p>=0.25&&percent!=="P25"){percent="P25";fbq('trackCustom','Audio25');}
 };
 
 /* TEMPO */
-function dispararTempo(){
-  tempo+=1;
+function tempoLoop(){
+  tempo++;
 
   if(tempo<=30){
     tempoLabel="S"+(tempo-1)+"a"+tempo;
@@ -138,35 +121,48 @@ function dispararTempo(){
 
   if(tempoLabel==="S0a1"){
     tempoS0a1=true;
-    checkEvento01();
-    checkEvento02();
+    checkEventos();
+  }
+
+  if(tempoLabel==="S1a2"){
+    tempoS1a2=true;
+    checkEventos();
   }
 }
 
-dispararTempo();
-setInterval(dispararTempo,1000);
+tempoLoop();
+setInterval(tempoLoop,1000);
 
-/* EVENTO01 */
-function checkEvento01(){
-  if(clickRight && tempoS0a1 && !evento01Disparado){
-    fbq('trackCustom','EVENTO01');
-    evento01Disparado=true;
-  }
-}
+/* EVENTOS */
+function checkEventos(){
 
-/* EVENTO02 */
-function checkEvento02(){
-  if(clickRight && tempoS0a1 && !evento02Disparado){
+  if(clickRight && tempoS0a1 && !evento02){
     fbq('trackCustom','EVENTO02');
-    evento02Disparado=true;
+    evento02=true;
+  }
+
+  if(clickRight && tempoS1a2 && !evento01){
+    fbq('trackCustom','EVENTO01');
+    evento01=true;
   }
 }
 
 /* UTIL */
-function clean(s){return s.replace(/[^a-zA-Z0-9]/g,"");}
+function clean(s){
+  return s.replace(/[^a-zA-Z0-9]/g,"");
+}
+
+function extra(){
+  let e="";
+  if(player)e+="PL";
+  if(percent)e+=percent;
+  if(tempoLabel)e+=tempoLabel;
+  return e;
+}
 
 /* CLICK */
 function go(e,el,tipo){
+
   const r=el.getBoundingClientRect();
   const x=e.clientX-r.left;
   const w=r.width;
@@ -176,27 +172,40 @@ function go(e,el,tipo){
   let id=BASE;
 
   if(tipo==="cupom"){
+    id+="CupomClick"+pos;
     fbq('track',"InitiateCheckout");
     navigator.clipboard.writeText(CUPOM);
     el.innerText="Copiado!";
   }else{
+    id+="ClickShopee"+pos;
     fbq('track',"ViewContent");
 
     if(pos==="Right"){
       clickRight=true;
-      checkEvento01();
-      checkEvento02();
+      checkEventos();
     }
 
     el.innerText="Redirecionando...";
   }
 
+  id+=extra();
+  id=clean(id);
+
   const url=API+"?link="+encodeURIComponent(LINK)+"&uc="+id;
-  setTimeout(()=>{window.location.href=url},150);
+
+  setTimeout(function(){
+    window.location.href=url;
+  },120);
 }
 
-document.getElementById("btnCupom").onclick=function(e){go(e,this,"cupom");};
-document.getElementById("btnShopee").onclick=function(e){go(e,this,"normal");};
+/* BOTÕES (CORRIGIDO) */
+document.getElementById("btnCupom").onclick = function(e){
+  go(e, this, "cupom");
+};
+
+document.getElementById("btnShopee").onclick = function(e){
+  go(e, this, "normal");
+};
 
 })();
 </script>
